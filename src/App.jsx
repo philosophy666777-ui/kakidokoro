@@ -81,12 +81,11 @@ const emptyChar = (name = "新しい人物") => ({ id: uid(), name, feature: "",
 const DEFAULT_STATE = {
   title: "無題の原稿", keyword: "",
   staff: { script: "", original: "", director: "", cast: "", author: "", date: "" },
-  text: "　神棚の埃を、母は決して払わなかった。\n　それが家の決まりなのだと、幼い私はずっと信じていた。",
   settings: { charsPerLine: 20, linesPerPage: 20, fontId: "mincho", fontSizePx: 20, showGrid: true, exportFontPx: 16, exportTitlePage: true },
   plot: [
-    { id: uid(), title: "発端 — 実家に戻る", note: "母の訃報。十年ぶりの帰郷。", current: true },
-    { id: uid(), title: "違和感 — 神棚の埃", note: "触れてはいけないものとして残されている。", current: false },
-    { id: uid(), title: "転回 — 父の手記", note: "神棚の由来が明かされる。", current: false },
+    { id: uid(), title: "発端 — 実家に戻る", note: "母の訃報。十年ぶりの帰郷。", current: true, body: "　神棚の埃を、母は決して払わなかった。\n　それが家の決まりなのだと、幼い私はずっと信じていた。" },
+    { id: uid(), title: "違和感 — 神棚の埃", note: "触れてはいけないものとして残されている。", current: false, body: "" },
+    { id: uid(), title: "転回 — 父の手記", note: "神棚の由来が明かされる。", current: false, body: "" },
   ],
   concept: { background: "", badSituation: "", intent: "", irony: "", reversal: "", badEndPattern: "",
     sj: { incident: "", conflict: "", resolution: "", lesson: "" }, ending: { p1: "", p2: "", p3: "" } },
@@ -117,6 +116,19 @@ function applyLoaded(p, s) {
     emotion: { ...p.emotion, ...(s.emotion || {}) },
     aiProviders: { ...p.aiProviders, ...(s.aiProviders || {}) },
   };
+}
+
+// 旧バージョン（本文が1つの塊）からの移行：本文を節ごとに持たせる
+function migrate(st) {
+  const plot = (st.plot || []).map((p) => ({ body: "", ...p }));
+  const anyBody = plot.some((p) => (p.body || "").length > 0);
+  if (!anyBody && typeof st.text === "string" && st.text.length > 0) {
+    let idx = plot.findIndex((p) => p.current);
+    if (idx < 0) idx = 0;
+    if (plot[idx]) plot[idx] = { ...plot[idx], body: st.text };
+  }
+  const { text, ...rest } = st;
+  return { ...rest, plot };
 }
 
 // ---- AI providers ----
@@ -298,7 +310,7 @@ export default function App() {
 
   useEffect(() => { (async () => {
     const s = await storageGet(STORE_KEY);
-    if (s) setState((p) => applyLoaded(p, s));
+    if (s) setState((p) => migrate(applyLoaded(p, s)));
     setLoaded(true);
   })(); }, []);
   useEffect(() => {
@@ -317,18 +329,23 @@ export default function App() {
   const setStructSub = (g, k, v) => setState((s) => ({ ...s, structure: { ...s.structure, [g]: { ...s.structure[g], [k]: v } } }));
 
   const font = FONTS.find((f) => f.id === state.settings.fontId) || FONTS[0];
-  const chars = [...state.text].filter((c) => c !== "\n").length;
+  const curNode = state.plot.find((p) => p.current) || state.plot[0];
+  const curBody = curNode?.body || "";
+  const fullText = state.plot.map((p) => p.body || "").join("\n");
+  const setCurBody = (v) => setState((s) => { const id = (s.plot.find((p) => p.current) || s.plot[0])?.id; return { ...s, plot: s.plot.map((p) => p.id === id ? { ...p, body: v } : p) }; });
+  const chars = [...curBody].filter((c) => c !== "\n").length;
+  const totalChars = [...fullText].filter((c) => c !== "\n").length;
   const estLines = Math.ceil(chars / Math.max(1, state.settings.charsPerLine));
   const perPage = state.settings.charsPerLine * state.settings.linesPerPage;
-  const pages = (chars / Math.max(1, perPage)).toFixed(1);
+  const pages = (totalChars / Math.max(1, perPage)).toFixed(1);
   const hh = Math.floor(state.writingSeconds / 3600), mm = Math.floor((state.writingSeconds % 3600) / 60);
   const timeLabel = `${hh}時間${String(mm).padStart(2, "0")}分`;
   const setCurrent = (id) => setState((s) => ({ ...s, plot: s.plot.map((p) => ({ ...p, current: p.id === id })) }));
-  const curPlot = state.plot.find((p) => p.current);
+  const curPlot = curNode;
 
   async function runAnalysis() {
     setAiOpen(true); setAiBusy(true); setAiResults([]);
-    const ctx = `【作品名】${state.title}\n【キーワード】${state.keyword}\n【現在地】${curPlot ? curPlot.title : "未設定"}\n【総文字数】${chars}字\n【累計執筆時間】${timeLabel}\n【本文（抜粋）】\n${state.text.slice(0, 2500)}`;
+    const ctx = `【作品名】${state.title}\n【キーワード】${state.keyword}\n【現在地】${curPlot ? curPlot.title : "未設定"}\n【総文字数】${totalChars}字\n【累計執筆時間】${timeLabel}\n【本文（抜粋）】\n${fullText.slice(0, 2500)}`;
     const prompt = CRIT_PROMPT(ctx);
     const ap = state.aiProviders;
     const jobs = [{ name: "Claude", fn: () => callClaude(prompt) }];
@@ -389,11 +406,13 @@ export default function App() {
             <div className="kd-editor-wrap">
               <textarea className={`kd-editor ${state.settings.showGrid ? "grid" : ""}`}
                 style={{ fontFamily: font.stack, fontSize: state.settings.fontSizePx + "px", lineHeight: LH, width: "min(78vh, 900px)", "--adv": state.settings.fontSizePx * LH + "px" }}
-                value={state.text} onChange={(e) => patch({ text: e.target.value })}
+                value={curBody} onChange={(e) => setCurBody(e.target.value)}
                 onFocus={() => (focusRef.current = true)} onBlur={() => (focusRef.current = false)} spellCheck={false} aria-label="本文" />
             </div>
             <div className="kd-counts">
-              <span><b>{chars}</b> 字</span><span>約 <b>{estLines}</b> 行</span><span>約 <b>{pages}</b> 枚（{perPage}字／枚）</span>
+              <span>現在の節：<b>{curNode ? curNode.title : "—"}</b></span>
+              <span>この節 <b>{chars}</b> 字（約 {estLines} 行）</span>
+              <span>全体 <b>{totalChars}</b> 字・約 <b>{pages}</b> 枚（{perPage}字／枚）</span>
             </div>
           </div>
           <div className="kd-pane right">
@@ -535,7 +554,7 @@ export default function App() {
 
       <div className="kd-print">
         {printing && (
-          <PrintPages text={state.text} cpl={state.settings.charsPerLine} lpp={state.settings.linesPerPage}
+          <PrintPages text={fullText} cpl={state.settings.charsPerLine} lpp={state.settings.linesPerPage}
             fontStack={font.stack} fontPx={state.settings.exportFontPx} titlePage={state.settings.exportTitlePage}
             title={state.title} author={state.staff.author} />
         )}
@@ -692,7 +711,8 @@ function PrintPages({ text, cpl, lpp, fontStack, fontPx, titlePage, title, autho
 function ExportView({ state, setState, onExport }) {
   const st = state.settings;
   const font = FONTS.find((f) => f.id === st.fontId) || FONTS[0];
-  const pages = paginate(state.text, st.charsPerLine, st.linesPerPage);
+  const fullText = state.plot.map((p) => p.body || "").join("\n");
+  const pages = paginate(fullText, st.charsPerLine, st.linesPerPage);
   const setS = (p) => setState((s) => ({ ...s, settings: { ...s.settings, ...p } }));
   const fileRef = useRef(null);
   const exportData = () => {
@@ -712,7 +732,7 @@ function ExportView({ state, setState, onExport }) {
       try {
         const parsed = JSON.parse(reader.result);
         if (window.confirm("現在の内容を、読み込むファイルの内容で置き換えます。よろしいですか？")) {
-          setState((p) => applyLoaded(DEFAULT_STATE, parsed));
+          setState((p) => migrate(applyLoaded(DEFAULT_STATE, parsed)));
         }
       } catch (err) { window.alert("読み込みに失敗しました。このアプリで書き出したJSONファイルを選んでください。"); }
       e.target.value = "";
