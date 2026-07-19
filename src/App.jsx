@@ -136,12 +136,13 @@ const CRIT_PROMPT = (ctx) =>
   `あなたは日本語小説の編集者兼評論家です。次の原稿を、構成・文体・ペースの3観点で講評してください。\n${ctx}\n\n出力はJSONオブジェクトのみ（前置き・マークダウン・コードフェンス禁止）。形式:{"kousei":0から100の整数,"buntai":0から100の整数,"pace":0から100の整数,"comment":"200字以内。良い点と、次の一手を具体的に1つ"}`;
 
 async function callClaude(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/claude", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ prompt }),
   });
   const data = await res.json();
-  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  if (!res.ok) throw new Error(data.error || "Claudeの呼び出しに失敗しました");
+  return data.text || "";
 }
 async function callOpenAI(prompt, key, model) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
