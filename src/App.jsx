@@ -342,6 +342,14 @@ export default function App() {
   const hh = Math.floor(state.writingSeconds / 3600), mm = Math.floor((state.writingSeconds % 3600) / 60);
   const timeLabel = `${hh}時間${String(mm).padStart(2, "0")}分`;
   const setCurrent = (id) => setState((s) => ({ ...s, plot: s.plot.map((p) => ({ ...p, current: p.id === id })) }));
+  const movePlot = (id, dir) => setState((s) => {
+    const arr = [...s.plot];
+    const i = arr.findIndex((p) => p.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return s;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    return { ...s, plot: arr };
+  });
   const curPlot = curNode;
 
   async function runAnalysis() {
@@ -467,10 +475,16 @@ export default function App() {
           <div className="kd-sec"><div className="kd-sec-h">プロット（タネ→1行→3行→10行）</div><div className="kd-sec-b">
             {PLOT_FIELDS.map((f) => f.rows ? <Area key={f.k} label={f.label} rows={f.rows} value={state.structure[f.k]} onChange={(v) => setStruct(f.k, v)} /> : <Inp key={f.k} label={f.label} value={state.structure[f.k]} onChange={(v) => setStruct(f.k, v)} />)}
           </div></div>
-          <div className="kd-sec"><div className="kd-sec-h">節（本文の現在地／執筆タブと連動）</div><div className="kd-sec-b">
-            {state.plot.map((p) => (
+          <div className="kd-sec"><div className="kd-sec-h">節（章の順番／執筆タブと連動）</div><div className="kd-sec-b">
+            <div className="kd-note" style={{ marginTop: 0, marginBottom: 10 }}>この並び順がそのまま章の順番になります（執筆タブの一覧・PDF出力の順に反映）。▲▼で入れ替え。</div>
+            {state.plot.map((p, i) => (
               <div className="kd-fld" key={p.id}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, color: "var(--sumi-soft)", minWidth: 18, textAlign: "right" }}>{i + 1}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button className="kd-btn sm ghost" style={{ padding: "0 7px", lineHeight: 1.4 }} disabled={i === 0} onClick={() => movePlot(p.id, -1)} title="上へ">▲</button>
+                    <button className="kd-btn sm ghost" style={{ padding: "0 7px", lineHeight: 1.4 }} disabled={i === state.plot.length - 1} onClick={() => movePlot(p.id, 1)} title="下へ">▼</button>
+                  </div>
                   <input className="kd-input" value={p.title} onChange={(e) => setState((s) => ({ ...s, plot: s.plot.map((x) => x.id === p.id ? { ...x, title: e.target.value } : x) }))} />
                   <button className={`kd-btn sm ${p.current ? "solid" : "ghost"}`} onClick={() => setCurrent(p.id)}>{p.current ? "現在地" : "ここへ"}</button>
                 </div>
@@ -478,7 +492,7 @@ export default function App() {
                 <button className="kd-mini" onClick={() => setState((s) => ({ ...s, plot: s.plot.filter((x) => x.id !== p.id) }))}>削除</button>
               </div>
             ))}
-            <button className="kd-btn ghost" onClick={() => setState((s) => ({ ...s, plot: [...s.plot, { id: uid(), title: "新しい節", note: "", current: false }] }))}>＋ 節を追加</button>
+            <button className="kd-btn ghost" onClick={() => setState((s) => ({ ...s, plot: [...s.plot, { id: uid(), title: "新しい節", note: "", current: false, body: "" }] }))}>＋ 節を追加</button>
           </div></div>
           <div className="kd-sec"><div className="kd-sec-h">ABCの構成 ver2</div><div className="kd-sec-b">
             {ABC_FIELDS.map((f) => <Inp key={f.k} label={f.label} value={state.structure.abc?.[f.k]} onChange={(v) => setStructSub("abc", f.k, v)} />)}
