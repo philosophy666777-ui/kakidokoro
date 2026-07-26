@@ -270,7 +270,7 @@ const CSS = `
   .kd-root{ background:#fff !important }
   .kd-root > *:not(.kd-print){ display:none !important }
   .kd-print{ display:block !important; color:#000 }
-  .kd-pg{ break-after:page; page-break-after:always; display:flex; justify-content:flex-start; padding:0 }
+  .kd-pg{ break-after:page; page-break-after:always; display:flex; justify-content:flex-end; padding:0 }
   .kd-pg:last-child{ break-after:auto; page-break-after:auto }
   .kd-pg-title{ justify-content:center; align-items:flex-start; height:70vh }
   @page{ size:A4 landscape; margin:14mm }
@@ -780,8 +780,8 @@ function ExportView({ state, setState, onExport }) {
         </div>
         <div className="kd-note">読み込むと今の内容は上書きされます。念のため、先に書き出してから読み込むと安全です。</div>
       </div></div>
-      <div className="kd-sec"><div className="kd-sec-h">プレビュー（1ページ目）</div><div className="kd-sec-b" style={{ overflowX: "auto" }}>
-        <div style={{ border: "1px solid var(--edge)", background: "#fff", padding: 16, display: "inline-block" }}>
+      <div className="kd-sec"><div className="kd-sec-h">プレビュー（1ページ目）</div><div className="kd-sec-b" style={{ overflowX: "auto", textAlign: "right" }}>
+        <div style={{ border: "1px solid var(--edge)", background: "#fff", padding: 16, display: "inline-block", textAlign: "left" }}>
           <div style={{ writingMode: "vertical-rl", whiteSpace: "pre", fontFamily: font.stack, fontSize: st.exportFontPx + "px", lineHeight: 1.8, height: Math.ceil(st.charsPerLine * st.exportFontPx * 1.06) + "px", color: "#000" }}>{pages[0].join("\n")}</div>
         </div>
       </div></div>
