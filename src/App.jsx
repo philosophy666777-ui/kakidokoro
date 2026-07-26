@@ -273,7 +273,7 @@ const CSS = `
   .kd-pg{ break-after:page; page-break-after:always; display:flex; justify-content:flex-start; padding:0 }
   .kd-pg:last-child{ break-after:auto; page-break-after:auto }
   .kd-pg-title{ justify-content:center; align-items:flex-start; height:70vh }
-  @page{ size:A4; margin:14mm }
+  @page{ size:A4 landscape; margin:14mm }
 }
 `;
 
