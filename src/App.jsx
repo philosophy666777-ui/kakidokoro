@@ -790,25 +790,25 @@ function ExportView({ state, setState, onExport }) {
 }
 
 function EmotionView({ state, setState }) {
-  const scenes = state.emotion.scenes;
+  const scenes = state.plot; // 章（節）＝場面。構成タブと連動
   const READER_COLOR = "#B5533C";
   const getV = (cid, sid) => { const v = state.emotion.values?.[cid]?.[sid]; return typeof v === "number" ? v : 0; };
   const setV = (cid, sid, val) => setState((s) => { const values = { ...(s.emotion.values || {}) }; values[cid] = { ...(values[cid] || {}), [sid]: val }; return { ...s, emotion: { ...s.emotion, values } }; });
   const getR = (sid) => { const v = state.emotion.reader?.[sid]; return typeof v === "number" ? v : 0; };
   const setR = (sid, val) => setState((s) => ({ ...s, emotion: { ...s.emotion, reader: { ...(s.emotion.reader || {}), [sid]: val } } }));
-  const addScene = () => setState((s) => ({ ...s, emotion: { ...s.emotion, scenes: [...s.emotion.scenes, { id: uid(), label: `場面${s.emotion.scenes.length + 1}` }] } }));
-  const setLabel = (id, label) => setState((s) => ({ ...s, emotion: { ...s.emotion, scenes: s.emotion.scenes.map((x) => x.id === id ? { ...x, label } : x) } }));
-  const removeScene = (id) => setState((s) => ({ ...s, emotion: { ...s.emotion, scenes: s.emotion.scenes.filter((x) => x.id !== id) } }));
-  const chartData = scenes.map((sc) => { const row = { name: sc.label, "読者の気分": getR(sc.id) }; state.characters.forEach((c) => { row[c.name] = getV(c.id, sc.id); }); return row; });
+  const chartData = scenes.map((sc, i) => { const row = { name: `${i + 1}.${sc.title || "無題"}`, "読者の気分": getR(sc.id) }; state.characters.forEach((c) => { row[c.name] = getV(c.id, sc.id); }); return row; });
   return (
     <div className="kd-page">
       <div className="kd-h">気分曲線 — 読者の気分（読み心地）＋ 登場人物の感情</div>
-      <div className="kd-note" style={{ marginTop: 0, marginBottom: 10 }}>縦軸は −5（暗い・不安・重い）〜 +5（明るい・高揚・軽い）。太い朱色の線が「読者が読み進めながら感じる気分の上下」、細い線が各登場人物の感情です。</div>
+      <div className="kd-note" style={{ marginTop: 0, marginBottom: 10 }}>横軸は構成タブの節（章）と連動しています。節の追加・削除・並べ替え・改名は構成タブで。縦軸は −5（暗い・不安・重い）〜 +5（明るい・高揚・軽い）。太い朱色の線が「読者が読み進めながら感じる気分の上下」、細い線が各登場人物の感情です。</div>
+      {scenes.length === 0 ? (
+        <div className="kd-empty">構成タブで節を追加すると、ここに横軸として並びます。</div>
+      ) : (<>
       <div style={{ background: "var(--paper-2)", border: "1px solid var(--edge)", borderRadius: 2, padding: "16px 10px 8px" }}>
         <ResponsiveContainer width="100%" height={320}>
           <LineChart data={chartData} margin={{ top: 8, right: 20, bottom: 8, left: -10 }}>
             <CartesianGrid stroke="#D6D0C1" strokeDasharray="2 3" />
-            <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#5b554d" }} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#5b554d" }} />
             <YAxis domain={[-5, 5]} tick={{ fontSize: 12, fill: "#5b554d" }} />
             <ReferenceLine y={0} stroke="#B5533C" strokeOpacity={0.4} />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 2, border: "1px solid #D6D0C1" }} />
@@ -820,24 +820,22 @@ function EmotionView({ state, setState }) {
       </div>
       <table className="kd-emo-grid">
         <thead><tr>
-          <th style={{ textAlign: "left" }}>場面</th>
+          <th style={{ textAlign: "left" }}>節（章）</th>
           <th style={{ color: READER_COLOR }}><span className="kd-swatch" style={{ background: READER_COLOR, display: "inline-block", marginRight: 5 }} />読者の気分</th>
           {state.characters.map((c, i) => <th key={c.id}><span className="kd-swatch" style={{ background: CHAR_COLORS[i % CHAR_COLORS.length], display: "inline-block", marginRight: 5 }} />{c.name}</th>)}
-          <th></th>
         </tr></thead>
         <tbody>
-          {scenes.map((sc) => (
+          {scenes.map((sc, i) => (
             <tr key={sc.id}>
-              <td className="rowh"><input className="kd-input" style={{ fontSize: 12 }} value={sc.label} onChange={(e) => setLabel(sc.id, e.target.value)} /></td>
+              <td className="rowh" style={{ fontSize: 12 }}>{i + 1}. {sc.title || "（無題）"}</td>
               <td style={{ background: "#F6ECE7" }}><input type="number" min={-5} max={5} value={getR(sc.id)} onChange={(e) => setR(sc.id, Number(e.target.value))} /></td>
               {state.characters.map((c) => <td key={c.id}><input type="number" min={-5} max={5} value={getV(c.id, sc.id)} onChange={(e) => setV(c.id, sc.id, Number(e.target.value))} /></td>)}
-              <td><button className="kd-mini" onClick={() => removeScene(sc.id)}>×</button></td>
             </tr>
           ))}
         </tbody>
       </table>
-      <button className="kd-btn ghost" style={{ marginTop: 12 }} onClick={addScene}>＋ 場面を追加</button>
-      <div className="kd-note">「読者の気分」は作品全体の読み心地の波、各人物の列はその場面での感情。人物は登場人物タブと共有です。</div>
+      <div className="kd-note">節名は構成タブでの章タイトルがそのまま表示されます。人物は登場人物タブと共有です。</div>
+      </>)}
     </div>
   );
 }
