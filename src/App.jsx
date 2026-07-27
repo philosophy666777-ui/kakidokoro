@@ -703,16 +703,22 @@ function paginate(text, cpl, lpp) {
   return pages;
 }
 
+const PRINT_SAFE_H = 660; // 用紙(A4横)の印刷可能高さの安全値。1列がこれを超えないよう字を縮める
+function fitFontPx(cpl, fontPx) {
+  return Math.max(9, Math.min(fontPx, Math.floor(PRINT_SAFE_H / (Math.max(1, cpl) * 1.15))));
+}
+
 function PrintPages({ text, cpl, lpp, fontStack, fontPx, titlePage, title, author }) {
   const pages = paginate(text, cpl, lpp);
-  const pageStyle = { writingMode: "vertical-rl", whiteSpace: "pre", fontFamily: fontStack, fontSize: fontPx + "px", lineHeight: 1.8, height: Math.ceil(cpl * fontPx * 1.06) + "px", letterSpacing: 0, color: "#000" };
+  const f = fitFontPx(cpl, fontPx);
+  const pageStyle = { writingMode: "vertical-rl", whiteSpace: "pre", fontFamily: fontStack, fontSize: f + "px", lineHeight: 1.8, height: Math.ceil(cpl * f * 1.12) + "px", letterSpacing: 0, color: "#000" };
   return (
     <>
       {titlePage && (
         <div className="kd-pg kd-pg-title">
           <div style={{ writingMode: "vertical-rl", fontFamily: fontStack, color: "#000" }}>
-            <div style={{ fontSize: fontPx * 1.8 + "px", fontWeight: 700, marginLeft: 40 }}>{title || "無題"}</div>
-            {author && <div style={{ fontSize: fontPx + "px" }}>{author}</div>}
+            <div style={{ fontSize: f * 1.8 + "px", fontWeight: 700, marginLeft: 40 }}>{title || "無題"}</div>
+            {author && <div style={{ fontSize: f + "px" }}>{author}</div>}
           </div>
         </div>
       )}
@@ -782,7 +788,7 @@ function ExportView({ state, setState, onExport }) {
       </div></div>
       <div className="kd-sec"><div className="kd-sec-h">プレビュー（1ページ目）</div><div className="kd-sec-b" style={{ overflowX: "auto", textAlign: "right" }}>
         <div style={{ border: "1px solid var(--edge)", background: "#fff", padding: 16, display: "inline-block", textAlign: "left" }}>
-          <div style={{ writingMode: "vertical-rl", whiteSpace: "pre", fontFamily: font.stack, fontSize: st.exportFontPx + "px", lineHeight: 1.8, height: Math.ceil(st.charsPerLine * st.exportFontPx * 1.06) + "px", color: "#000" }}>{pages[0].join("\n")}</div>
+          <div style={{ writingMode: "vertical-rl", whiteSpace: "pre", fontFamily: font.stack, fontSize: fitFontPx(st.charsPerLine, st.exportFontPx) + "px", lineHeight: 1.8, height: Math.ceil(st.charsPerLine * fitFontPx(st.charsPerLine, st.exportFontPx) * 1.12) + "px", color: "#000" }}>{pages[0].join("\n")}</div>
         </div>
       </div></div>
     </div>
